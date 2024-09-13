@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System.Drawing;
+using System.Globalization;
 using System.Text;
 using CrawData.Models;
 using HtmlAgilityPack;
@@ -36,7 +37,7 @@ class Program
         //     Console.WriteLine($"{i + " " + operators[i].OperatorId} - {operators[i].OperatorName} - {operators[i].Side} - {operators[i].Squad} - {operators[i].Health} - {operators[i].Speed} - {operators[i].Difficulty}");
         // }
 
-        await crawl.Get_Details_Operator_Async("https://www.ubisoft.com/en-gb/game/rainbow-six/siege/game-info/operators/solis");        
+        await crawl.Get_Details_Operator_Async("https://www.ubisoft.com/en-gb/game/rainbow-six/siege/game-info/operators/solis");
 
     }
 
@@ -82,7 +83,7 @@ public class Crawl
                 List<string> operators = new List<string>();
                 foreach (var div in divs)
                 {
-                    if(div.InnerText == "NØKK")
+                    if (div.InnerText == "NØKK")
                     {
                         operators.Add("nokk");
                     }
@@ -235,17 +236,97 @@ public class Crawl
                                         else if (i == 2) op.Difficulty = data;
                                     }
 
-                                    //tiếp theo là lấy skill
-                                    var prom_operator__ability__row  = div.Descendants("div").Where(d => d.Attributes["class"] != null 
-                                    && d.Attributes["class"].Value == "promo operator__ability__row ");
+                                    //tiếp theo là lấy skill(mô tả và video )
+                                    var promo_operator__ability__row = div
+                                                    .Descendants("div")
+                                                    .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "promo operator__ability__row ");
 
+                                    //lấy description trước
+                                    var skillDesciption = promo_operator__ability__row.Descendants("div")
+                                    .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "promo__wrapper__content")
+                                    .Descendants("p").FirstOrDefault();
+
+                                    if (skillDesciption != null)
+                                    {
+                                        op.Ability.Description = skillDesciption.InnerHtml;
+                                    }
                                     //video
                                     //Chưa lấy được link video!
 
 
                                     //tiếp theo lấy loadout
-                                    var loadout = div.Descendants("div")
-                                    .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__loadout");
+                                    var loadout = html.Descendants("div")
+                                    .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__loadout")
+                                    .Descendants("div")
+                                    .Where(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__loadout__category")
+                                    .ToList();
+                                    //thẻ loadout này sẽ có 4 div nhỏ ở trong
+                                    //div 1 primary weapon
+                                    //div 2 secondary weapon
+                                    //div 3 GADGET
+                                    //div 4 UNIQUE ABILITY
+
+
+                                    //vòng lặp để duyệt qua 4 mục lớn của loadout
+                                    for (int i = 0; i < loadout.Count; i++)
+                                    {
+                                        //lấy các vũ khí trong 1 loadout
+                                        var loadout_category = loadout[i].Descendants("div")
+                                        .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__loadout__category__items")
+                                        .Descendants("div")
+                                        .Where(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__loadout__weapon")
+                                        .ToList();
+
+
+                                        for (int j = 0; j < loadout_category.Count; j++)
+                                        {
+                                            var nameAndType = loadout_category[j].Descendants("p").ToList();
+                                            var imgLink = loadout_category[j].Descendants("img").FirstOrDefault().Attributes["src"].Value;
+                                            if (i == 0)
+                                            {
+                                                op.PrimaryWeapon.Add(new PrimaryWeapon
+                                                {
+                                                    WeaponName = nameAndType[0].InnerText,
+                                                    Type = nameAndType[1].InnerText,
+                                                    Img = imgLink
+                                                });
+                                            }
+
+                                            else if (i == 1)
+                                            {
+                                                op.SecondaryWeapon.Add(new SecondaryWeapon
+                                                {
+                                                    WeaponName = nameAndType[0].InnerHtml,
+                                                    Type = nameAndType[1].InnerHtml,
+                                                    Img = imgLink
+                                                });
+                                            }
+
+                                            else if (i == 2)
+                                            {
+                                                op.Gadgets.Add(new Gadget
+                                                {
+                                                    Name = nameAndType[0].InnerText,
+                                                    Img = imgLink
+                                                });
+                                            }
+
+                                            else if (i == 3)
+                                            {
+                                                op.Skill = new Skill
+                                                {
+                                                    SkillName = nameAndType[0].InnerHtml,
+                                                    Img = imgLink
+                                                };
+                                            }
+                                        }
+
+                                    }
+
+                                    var gadgets = loadout[0];
+                                    var uniqueAbility = loadout[0];
+
+
 
                                     // Console.WriteLine($"{j++} - {op.OperatorId} - {op.OperatorName} - {op.Side} - {op.Squad} - {op.Health} - {op.Speed} - {op.Difficulty}");
 

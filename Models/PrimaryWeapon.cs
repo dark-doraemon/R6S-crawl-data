@@ -2,7 +2,7 @@ using System;
 
 namespace CrawData.Models;
 
-public class PrimaryWeapon : Loadout
+public class PrimaryWeapon : Weapon
 {
 
 }
