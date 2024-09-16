@@ -1,8 +1,10 @@
 ﻿using System.Drawing;
 using System.Globalization;
+using System.Security.Principal;
 using System.Text;
 using CrawData.Models;
 using HtmlAgilityPack;
+using OfficeOpenXml;
 
 namespace CrawData;
 
@@ -23,21 +25,115 @@ class Program
         // }
 
         List<Task<Operator>> tasks = new List<Task<Operator>>();
+        for (int i = 1; i < operatorNames.Count; i++)
+        {
+            tasks.Add(crawl.Get_Details_Operator_Async($"{url + RemoveAccents(operatorNames[i].ToLower())}"));
+        }
+        Operator[] operatorsArray = await Task.WhenAll(tasks);
+        operators.AddRange(operatorsArray);
 
-        // for (int i = 1; i < operatorNames.Count; i++)
-        // {
-        //     tasks.Add(crawl.Get_Details_Operator_Async($"{url + RemoveAccents(operatorNames[i].ToLower())}"));
-        // }
-        // Operator[] operatorsArray = await Task.WhenAll(tasks);
 
-        // operators.AddRange(operatorsArray);
+        // var op = await crawl.Get_Details_Operator_Async("https://www.ubisoft.com/en-gb/game/rainbow-six/siege/game-info/operators/solis");
 
-        // for (int i = 0; i < operators.Count; i++)
-        // {
-        //     Console.WriteLine($"{i + " " + operators[i].OperatorId} - {operators[i].OperatorName} - {operators[i].Side} - {operators[i].Squad} - {operators[i].Health} - {operators[i].Speed} - {operators[i].Difficulty}");
-        // }
+        string filePath = @"C:\Users\tuan\Desktop\data\operators.xlsx";
+        // Kiểm tra và xóa file nếu đã tồn tại
+        if (File.Exists(filePath))
+        {
+            File.Delete(filePath);
+        }
 
-        await crawl.Get_Details_Operator_Async("https://www.ubisoft.com/en-gb/game/rainbow-six/siege/game-info/operators/solis");
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+        using (var package = new ExcelPackage(filePath))
+        {
+            for (int i = 0; i < operators.Count(); i++)
+            {
+                var sheet = package.Workbook.Worksheets.Add(operators[i].OperatorName);
+                sheet.Cells["A1"].Value = "OperatorId";
+                sheet.Cells["B1"].Value = "OperatorName";
+                sheet.Cells["C1"].Value = "OperatorIcon";
+                sheet.Cells["D1"].Value = "UnknownInformation";
+                sheet.Cells["E1"].Value = "Ability";
+                sheet.Cells["F1"].Value = "PrimaryWeapon";
+                sheet.Cells["G1"].Value = "SecondaryWeapon";
+                sheet.Cells["H1"].Value = "Gadgets";
+                sheet.Cells["I1"].Value = "Skill";
+                sheet.Cells["J1"].Value = "Side";
+                sheet.Cells["K1"].Value = "Squad";
+                sheet.Cells["L1"].Value = "SquadIcon";
+                sheet.Cells["M1"].Value = "Health";
+                sheet.Cells["N1"].Value = "Speed";
+                sheet.Cells["O1"].Value = "Difficulty";
+                sheet.Cells["P1"].Value = "RealName";
+                sheet.Cells["Q1"].Value = "DateOfBirth";
+                sheet.Cells["R1"].Value = "PlaceOfBirth";
+                sheet.Cells["S1"].Value = "Biography";
+
+                sheet.Cells["A2"].Value = operators[i].OperatorId;
+                sheet.Cells["B2"].Value = operators[i].OperatorName;
+                sheet.Cells["C2"].Value = operators[i].OperatorIcon;
+                sheet.Cells["D2"].Value = operators[i].UnknownInformation;
+                sheet.Cells["E2"].Value = operators[i].Ability.Description;
+
+                int primaryRow = 2;
+                for (int j = 0; j < operators[i].PrimaryWeapon.Count(); j++)
+                {
+
+                    sheet.Cells[$"F{primaryRow}"].Value = operators[i].PrimaryWeapon[j].WeaponName;
+                    sheet.Cells[$"F{primaryRow + 1}"].Value = operators[i].PrimaryWeapon[j].Img;
+                    sheet.Cells[$"F{primaryRow + 2}"].Value = operators[i].PrimaryWeapon[j].Type;
+
+                    primaryRow += 4;
+
+                }
+
+                int secondaryRow = 2;
+                for (int j = 0; j < operators[i].SecondaryWeapon.Count(); j++)
+                {
+                    sheet.Cells[$"G{secondaryRow}"].Value = operators[i].SecondaryWeapon[j].WeaponName;
+                    sheet.Cells[$"G{secondaryRow + 1}"].Value = operators[i].SecondaryWeapon[j].Img;
+                    sheet.Cells[$"G{secondaryRow + 2}"].Value = operators[i].SecondaryWeapon[j].Type;
+
+                    secondaryRow += 4;
+                }
+
+                int gadgetRow = 2;
+                for (int j = 0; j < operators[i].Gadgets.Count(); j++)
+                {
+                    sheet.Cells[$"H{gadgetRow}"].Value = operators[i].Gadgets[j].Name;
+                    sheet.Cells[$"H{gadgetRow + 1}"].Value = operators[i].Gadgets[j].Img;
+
+                    gadgetRow += 3;
+                }
+
+
+                sheet.Cells["I2"].Value = operators[i]?.Skill?.SkillName ?? "No Skill";
+                sheet.Cells["I3"].Value = operators[i]?.Skill?.Img ?? "No Image";
+
+                sheet.Cells["J2"].Value = operators[i]?.Side ?? "No Side";
+
+                sheet.Cells["K2"].Value = operators[i]?.Squad ?? "No Squad";
+
+                sheet.Cells["L2"].Value = operators[i]?.SquadIcon ?? "No Icon";
+
+                sheet.Cells["M2"].Value = operators[i]?.Health ?? 0; // Nếu giá trị mặc định không phải là số, thay đổi phù hợp
+                sheet.Cells["N2"].Value = operators[i]?.Speed ?? 0;
+                sheet.Cells["O2"].Value = operators[i]?.Difficulty ?? 0;
+
+                sheet.Cells["P2"].Value = operators[i]?.RealName ?? "No Name";
+                sheet.Cells["Q2"].Value = operators[i]?.DateofBirth ?? "No Date"; // Định dạng ngày tháng
+                sheet.Cells["R2"].Value = operators[i]?.PlaceofBirth ?? "No Place";
+                sheet.Cells["S2"].Value = operators[i]?.Biography ?? "No Biography";
+
+            }
+
+
+            // Save to file
+            package.Save();
+        }
+
+
+        // await crawl.Get_Details_Operator_Async("https://www.ubisoft.com/en-gb/game/rainbow-six/siege/game-info/operators/solis");
+        // await crawl.Get_Details_Operator_Async("https://www.ubisoft.com/en-gb/game/rainbow-six/siege/game-info/operators/glaz");
 
     }
 
@@ -119,7 +215,6 @@ public class Crawl
                 {
                     //lấy data-ccid có value
                     var data_ccid = htmlDocument.DocumentNode.Descendants("div").Where(d => d.Attributes["data-ccid"] != null);
-                    var data_ccid2 = htmlDocument.DocumentNode.Descendants("div").First(d => d.Attributes["data-ccid"] != null);
 
                     if (data_ccid == null)
                     {
@@ -239,7 +334,13 @@ public class Crawl
                                     //tiếp theo là lấy skill(mô tả và video )
                                     var promo_operator__ability__row = div
                                                     .Descendants("div")
-                                                    .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "promo operator__ability__row ");
+                                                    .FirstOrDefault(d => d.Attributes["class"] != null
+                                                    && d.Attributes["class"].Value == "promo operator__ability__row ");
+
+                                    if (promo_operator__ability__row == null)
+                                    {
+                                        return op;
+                                    }
 
                                     //lấy description trước
                                     var skillDesciption = promo_operator__ability__row.Descendants("div")
@@ -323,9 +424,58 @@ public class Crawl
 
                                     }
 
-                                    var gadgets = loadout[0];
-                                    var uniqueAbility = loadout[0];
+                                    //Lấy Real Name - Date of birth - place of birth
+                                    var realName_dob_pob_t = html.Descendants("div")
+                                    .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__biography");
 
+                                    if (realName_dob_pob_t == null) return op;
+
+                                    var realName_dob_pob = realName_dob_pob_t.Descendants("div")
+                                    .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__biography__infos")
+                                    .Descendants("div")
+                                    .Where(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__biography__info")
+                                    .ToList();
+
+                                    if (realName_dob_pob == null && realName_dob_pob.Count() == 0)
+                                    {
+                                        return op;
+                                    }
+
+                                    //realName_dob_pob có 3 phần tử
+                                    //[0]-realname
+                                    //[1]-date of birth
+                                    //[2]-place of birth
+
+                                    for (int i = 0; i < realName_dob_pob.Count; i++)
+                                    {
+                                        var operator__biography__info = realName_dob_pob[i]
+                                        .Descendants("div")
+                                        .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__biography__info__value")
+                                        .InnerHtml;
+
+                                        if (i == 0)
+                                        {
+                                            op.RealName = operator__biography__info;
+                                        }
+
+                                        else if (i == 1)
+                                        {
+                                            op.DateofBirth = operator__biography__info;
+                                        }
+
+                                        else if (i == 2)
+                                        {
+                                            op.PlaceofBirth = operator__biography__info;
+                                        }
+                                    }
+
+
+                                    //lấy biography
+                                    var biography = html.Descendants("div")
+                                    .FirstOrDefault(d => d.Attributes["class"] != null && d.Attributes["class"].Value == "operator__biography__description")
+                                    .InnerHtml;
+
+                                    op.Biography = biography;
 
 
                                     // Console.WriteLine($"{j++} - {op.OperatorId} - {op.OperatorName} - {op.Side} - {op.Squad} - {op.Health} - {op.Speed} - {op.Difficulty}");
@@ -342,13 +492,11 @@ public class Crawl
                         }
 
                     }
-
                 }
                 else
                 {
                     Console.WriteLine("Không tìm thấy nút với đường dẫn XPath đã cho.");
                 }
-
             }
         }
         return op;

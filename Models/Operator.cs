@@ -10,13 +10,9 @@ public class Operator
     public string UnknownInformation { get; set;}
     public Ability Ability{ get; set;} = new Ability();
     public List<PrimaryWeapon> PrimaryWeapon { get; set;} = new List<PrimaryWeapon>();
-
     public List<SecondaryWeapon> SecondaryWeapon { get; set;} = new List<SecondaryWeapon>();
-
     public List<Gadget> Gadgets { get; set;} = new List<Gadget>();
-
     public Skill Skill {get; set;}
-
     public string Side { get; set;}
     public string Squad { get; set;}
     public string SquadIcon { get; set;}    
@@ -27,6 +23,5 @@ public class Operator
     public string DateofBirth { get; set;}  
     public string PlaceofBirth { get; set;}
     public string Biography { get; set;}
-    public string PsychologicalReport { get; set;}
 
 }
